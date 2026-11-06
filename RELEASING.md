@@ -5,7 +5,7 @@
 1. Create the project on CurseForge (https://authors.curseforge.com), using `curseforge/project.md` and `curseforge/description.md`. New projects are reviewed by CurseForge before they go public.
 2. Add the project's id to the repository: Settings > Secrets and variables > Actions > **Variables** > `CF_PROJECT_ID`.
 3. Make an API token at https://legacy.curseforge.com/account/api-tokens and add it as the **secret** `CF_API_TOKEN`.
-4. Add `## X-Curse-Project-ID: <id>` to `LoreForeverHush.toc`, so addon managers can match an installed copy to the project.
+4. `## X-Curse-Project-ID: 1786649` in `LoreForeverHush.toc` lets addon managers match an installed copy to the project (done).
 
 ## Each release
 

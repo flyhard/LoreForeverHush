@@ -1,5 +1,7 @@
 # CurseForge project setup
 
+Project: https://www.curseforge.com/projects/1786649 (id 1786649)
+
 Fill these in when you create the project at https://authors.curseforge.com (Create Project, World of Warcraft).
 
 | Field | Value |
