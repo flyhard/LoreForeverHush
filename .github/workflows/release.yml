@@ -1,0 +1,110 @@
+# Builds the addon zip and, when you push a version tag, publishes it.
+#
+#   git tag v1.1.0 && git push origin v1.1.0
+#
+# - Every run (push to main, pull request, manual) builds LoreForeverHush-<version>.zip and keeps it as a
+#   workflow artifact, so you can download and test exactly what would ship.
+# - A tag v<version> also makes a GitHub release with the zip, and uploads it to CurseForge when the
+#   repository has the CF_API_TOKEN secret and the CF_PROJECT_ID variable (see RELEASING.md).
+# - The tag must match "## Version:" in LoreForeverHush.toc, or nothing is published.
+name: Release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  ADDON: LoreForeverHush
+  # CurseForge's name for the WoW Forever client. Change it when Forever gets a new patch.
+  CF_GAME_VERSIONS: "1.60.1"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the version from the TOC
+        id: meta
+        run: |
+          version="$(sed -n 's/^## Version:[[:space:]]*//p' "$ADDON.toc" | head -1 | tr -d '\r')"
+          [ -n "$version" ] || { echo "::error::No '## Version:' line in $ADDON.toc"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            tag="${GITHUB_REF#refs/tags/v}"
+            [ "$tag" = "$version" ] || { echo "::error::Tag v$tag does not match TOC version $version"; exit 1; }
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build the zip
+        run: |
+          version="${{ steps.meta.outputs.version }}"
+          mkdir -p "build/$ADDON"
+          # Only what the game and the player need: never .claude, docs, CLAUDE.md or the workflows.
+          cp "$ADDON.toc" "$ADDON.lua" LICENSE README.md "build/$ADDON/"
+          (cd build && zip -q -r "$ADDON-$version.zip" "$ADDON")
+          unzip -l "build/$ADDON-$version.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ADDON }}-${{ steps.meta.outputs.version }}
+          path: build/${{ env.ADDON }}-${{ steps.meta.outputs.version }}.zip
+
+      - name: Release notes for this version
+        if: steps.meta.outputs.release == 'true'
+        run: |
+          # The CHANGELOG.md section for this version, from its heading to the next one.
+          awk -v v="${{ steps.meta.outputs.version }}" '
+            /^## / { if (found) exit; if (index($0, v)) { found = 1; next } }
+            found { print }
+          ' CHANGELOG.md > build/notes.md
+          [ -s build/notes.md ] || { echo "::error::CHANGELOG.md has no section for ${{ steps.meta.outputs.version }}"; exit 1; }
+          cat build/notes.md
+
+      - name: GitHub release
+        if: steps.meta.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${{ steps.meta.outputs.version }}"
+          gh release create "v$version" "build/$ADDON-$version.zip" \
+            --title "Lore Forever Hush $version" --notes-file build/notes.md
+
+      - name: Upload to CurseForge
+        if: steps.meta.outputs.release == 'true'
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_PROJECT_ID: ${{ vars.CF_PROJECT_ID }}
+        run: |
+          if [ -z "$CF_API_TOKEN" ] || [ -z "$CF_PROJECT_ID" ]; then
+            echo "::warning::CF_API_TOKEN or CF_PROJECT_ID is not set: skipped CurseForge (see RELEASING.md)"
+            exit 0
+          fi
+          version="${{ steps.meta.outputs.version }}"
+          api="https://wow.curseforge.com/api"
+          versions="$(curl -fsSL -H "X-Api-Token: $CF_API_TOKEN" "$api/game/versions")"
+          ids="[]"
+          for name in $CF_GAME_VERSIONS; do
+            id="$(jq --arg n "$name" '[.[] | select(.name == $n) | .id]' <<<"$versions")"
+            [ "$(jq length <<<"$id")" = 1 ] || { echo "::error::CurseForge has no single game version named $name"; exit 1; }
+            ids="$(jq -c --argjson a "$ids" --argjson b "$id" -n '$a + $b')"
+          done
+          metadata="$(jq -n \
+            --arg name "Lore Forever Hush $version" \
+            --rawfile notes build/notes.md \
+            --argjson versions "$ids" \
+            '{displayName: $name, changelog: $notes, changelogType: "markdown", gameVersions: $versions,
+              releaseType: "release",
+              relations: {projects: [
+                {slug: "spoken", type: "requiredDependency"},
+                {slug: "lore-forever", type: "requiredDependency"}]}}')"
+          echo "$metadata"
+          curl -sS --fail-with-body -H "X-Api-Token: $CF_API_TOKEN" \
+            -F "metadata=$metadata" -F "file=@build/$ADDON-$version.zip" \
+            "$api/projects/$CF_PROJECT_ID/upload-file"

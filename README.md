@@ -27,3 +27,7 @@ Copy the `LoreForeverHush` folder (with `LoreForeverHush.toc` and `LoreForeverHu
 ## License
 
 MIT
+
+## Releasing
+
+See [RELEASING.md](RELEASING.md).

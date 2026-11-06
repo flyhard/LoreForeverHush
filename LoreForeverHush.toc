@@ -5,5 +5,7 @@
 ## Author: Per
 ## Dependencies: Spoken, LoreForever
 ## SavedVariables: LoreForeverHushDB
+## X-License: MIT
+## X-Website: https://github.com/flyhard/LoreForeverHush
 
 LoreForeverHush.lua
