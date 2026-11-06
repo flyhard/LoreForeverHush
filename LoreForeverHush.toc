@@ -1,0 +1,9 @@
+## Interface: 16001
+## Title: Lore Forever Hush
+## Notes: Pauses Lore Forever while Spoken reads a line, and lets it continue when Spoken is done.
+## Version: 1.1.0
+## Author: Per
+## Dependencies: Spoken, LoreForever
+## SavedVariables: LoreForeverHushDB
+
+LoreForeverHush.lua
