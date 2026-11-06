@@ -11,7 +11,7 @@ Fill these in when you create the project at https://authors.curseforge.com (Cre
 | License | MIT License |
 | Source | https://github.com/flyhard/LoreForeverHush |
 | Issues | https://github.com/flyhard/LoreForeverHush/issues |
-| Avatar | `curseforge/` has none yet: any 400x400 image works (a book with a "shh" finger fits) |
+| Avatar | `curseforge/icon.png` (400x400; `icon.svg` is its source) |
 | Description | paste `curseforge/description.md` (the editor accepts Markdown) |
 
 Relations (Files > Relations, or set by the release workflow on each upload):
