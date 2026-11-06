@@ -73,8 +73,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           version="${{ steps.meta.outputs.version }}"
-          gh release create "v$version" "build/$ADDON-$version.zip" \
-            --title "Lore Forever Hush $version" --notes-file build/notes.md
+          # A release made by hand in GitHub for this tag gets the zip; otherwise the tag makes one.
+          if gh release view "v$version" >/dev/null 2>&1; then
+            gh release upload "v$version" "build/$ADDON-$version.zip" --clobber
+          else
+            gh release create "v$version" "build/$ADDON-$version.zip" \
+              --title "Lore Forever Hush $version" --notes-file build/notes.md
+          fi
 
       - name: Upload to CurseForge
         if: steps.meta.outputs.release == 'true'
